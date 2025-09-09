@@ -18,11 +18,13 @@ variable "location" {
 variable "environment" {
   type        = string
   description = "Current environment for app"
+  default     = "dev"
 }
 
 variable "owner" {
   type        = string
   description = "Owner's name"
+  default     = "Krystian"
 }
 
 variable "db_password" {

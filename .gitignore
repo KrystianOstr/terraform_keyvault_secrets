@@ -14,7 +14,7 @@ terraform.rc
 *.tfvars
 *.tfvars.json
 *.auto.tfvars
-
+*.plan
 
 id_rsa
 id_rsa.pub
