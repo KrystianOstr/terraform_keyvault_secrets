@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -30,14 +31,14 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Terraform init
+        run: terraform init -reconfigure -input=false
+
       - name: Terraform fmt
         run: terraform fmt -check
 
       - name: Terraform validate
         run: terraform validate
-
-      - name: Terraform init
-        run: terraform init -reconfigure -input=false
 
       - name: Terraform plan
         run: terraform plan -input=false -no-color
