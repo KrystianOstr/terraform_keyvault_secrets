@@ -1,8 +1,10 @@
 name: Terraform plan
 
 on:
-  # push:
-  #   branches: [main]
+  push:
+    paths:
+      - '**/*.tf'
+      - '.github/workflows/terraform-*.yaml'
   pull_request:
   workflow_dispatch:
 
@@ -31,30 +33,6 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-
-          # TEST
-      - name: Debug RBAC on Storage
-        run: |
-          set -eux
-          echo "Account:"
-          az account show -o table
-          echo "Resolve SP objectId..."
-          SP_OBJECT_ID=$(az ad sp show --id $AZURE_CLIENT_ID --query id -o tsv)
-          echo "SP_OBJECT_ID=$SP_OBJECT_ID"
-          echo "Role assignments on Storage Account:"
-          az role assignment list \
-            --assignee-object-id $SP_OBJECT_ID \
-            --scope /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/tfstate-rg/providers/Microsoft.Storage/storageAccounts/tfstate78234926512 \
-            --query "[].{role:roleDefinitionName,scope:scope}" -o table
-          echo "Can we see container?"
-          az storage container show --name tfstate --account-name tfstate78234926512 --auth-mode login -o table
-          echo "Try listing one blob:"
-          az storage blob list --container-name tfstate --account-name tfstate78234926512 --auth-mode login --num-results 1 -o table
-        env:
-          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-  
-
       - name: Terraform init
         run: terraform init -reconfigure
 
@@ -65,4 +43,46 @@ jobs:
         run: terraform validate
 
       - name: Terraform plan
-        run: terraform plan -input=false -no-color
+        run: terraform plan -out tfplan -input=false -no-color
+
+      - name: upload tfplan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: tfplan
+          if-no-files-found: error
+
+  apply:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    needs: plan
+    runs-on: ubuntu-latest
+
+    env:
+      TF_VAR_sub_id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Azure OIDC login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        run: terraform init -reconfigure -input=false
+
+      - name: Download artifact (tfplan)
+        uses: actions/download-artifact@v5
+        with:
+          name: tfplan
+          path: .
+
+      - name: Terraform apply
+        run: terraform apply -input=false -auto-approve tfplan
