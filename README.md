@@ -2,6 +2,8 @@
 
 Minimal, production‑style setup: Resource Group + Key Vault (RBAC) + Secret, with remote state in Azure Blob and a two‑stage CI (plan on push/PR, manual apply with approval).
 
+[![Terraform plan](https://github.com/KrystianOstr/terraform_keyvault_secrets/actions/workflows/terraform-plan.yaml/badge.svg)](https://github.com/KrystianOstr/terraform_keyvault_secrets/actions/workflows/terraform-plan.yaml)
+
 Project Overview
 
 This repository provisions a small Azure footprint using Terraform and validates it in CI. The pipeline runs in two stages:
