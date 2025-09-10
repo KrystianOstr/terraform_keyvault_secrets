@@ -34,13 +34,5 @@ resource "azurerm_key_vault_secret" "kv_secret" {
   name         = "db-password"
   value        = var.db_password
   key_vault_id = azurerm_key_vault.main_kv.id
-
-  depends_on = [azurerm_role_assignment.kv_secrets_officer]
-}
-
-resource "azurerm_role_assignment" "kv_secrets_officer" {
-  scope                = azurerm_key_vault.main_kv.id
-  role_definition_name = "Key Vault Secrets Officer"
-  principal_id         = data.azurerm_client_config.current.object_id
 }
 
