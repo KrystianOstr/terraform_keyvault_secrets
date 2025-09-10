@@ -1,8 +1,8 @@
 name: Terraform plan
 
 on:
-  push:
-    branches: [main]
+  # push:
+  #   branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -31,8 +31,32 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+
+          # TEST
+      - name: Debug RBAC on Storage
+        run: |
+          set -eux
+          echo "Account:"
+          az account show -o table
+          echo "Resolve SP objectId..."
+          SP_OBJECT_ID=$(az ad sp show --id $AZURE_CLIENT_ID --query id -o tsv)
+          echo "SP_OBJECT_ID=$SP_OBJECT_ID"
+          echo "Role assignments on Storage Account:"
+          az role assignment list \
+            --assignee-object-id $SP_OBJECT_ID \
+            --scope /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/tfstate-rg/providers/Microsoft.Storage/storageAccounts/tfstate78234926512 \
+            --query "[].{role:roleDefinitionName,scope:scope}" -o table
+          echo "Can we see container?"
+          az storage container show --name tfstate --account-name tfstate78234926512 --auth-mode login -o table
+          echo "Try listing one blob:"
+          az storage blob list --container-name tfstate --account-name tfstate78234926512 --auth-mode login --num-results 1 -o table
+        env:
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  
+
       - name: Terraform init
-        run: terraform init -reconfigure -input=false
+        run: terraform init -reconfigure
 
       - name: Terraform fmt
         run: terraform fmt -check
